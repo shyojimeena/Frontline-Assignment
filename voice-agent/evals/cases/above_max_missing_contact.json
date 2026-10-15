@@ -1,0 +1,19 @@
+{
+  "id": "above_max_missing_contact",
+  "title": "Reject an above-max bid with no contact info",
+  "purpose": "record_agreement already requires a name and phone when above_max is set.",
+  "include": ["verified_load"],
+  "expectations": [
+    {"check": "no_leakage", "on_violation": "fail"},
+    {"check": "tool_rejected", "on_violation": "fail", "tool": "record_agreement"}
+  ],
+  "turns": [
+    {
+      "user": "Thirty-two hundred. Take it or leave it.",
+      "assistant": {
+        "text": "I can note that bid if I get a name and a callback number.",
+        "tools": [{"name": "record_agreement", "arguments": {"agreed_price": 3200, "above_max": true}}]
+      }
+    }
+  ]
+}

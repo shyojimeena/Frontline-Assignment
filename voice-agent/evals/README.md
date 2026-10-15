@@ -32,4 +32,12 @@ Probe scenarios use a scripted assistant. They do not call gpt-4.1. A finding th
 
 Live model compliance, phone audio, a transfer after the load is confirmed, or delivery of a quote to the carrier quote API.
 
-See [the design note](../../docs/EVALUATION.md) for why these cases were chosen.
+## Adding a case
+
+A new conversation is a JSON file in `voice-agent/evals/cases/`. Set `include` to `verified_load` when the case starts after the carrier and the load are already on the call. Each expectation names a check from `evals/checks.py`.
+
+- `on_violation: "fail"` means the run exits 1 if the check does not hold.
+- `on_violation: "finding"` means a miss is reported and the run still exits 0. Change it to `fail` when that behavior should start blocking merges.
+
+A new tool is a function added to `TOOLS` in `evals/handlers.py`. A new check is a function added to `CHECKS` in `evals/checks.py`. Neither requires a change to the runner.
+

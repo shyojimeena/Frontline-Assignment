@@ -1,0 +1,30 @@
+{
+  "id": "zone1_accept_below_goal",
+  "title": "Accept a below-goal bid that the carrier holds",
+  "purpose": "A binding agreement at the carrier's bid, below the goal, is recorded and the quote path is notified.",
+  "include": ["verified_load"],
+  "held_bid": 2200,
+  "expectations": [
+    {"check": "no_leakage", "on_violation": "fail"},
+    {"check": "binding_agreement", "on_violation": "fail"}
+  ],
+  "turns": [
+    {
+      "user": "I can do twenty-two hundred. That's my final offer.",
+      "assistant": {
+        "text": "Alright, twenty-two hundred it is.",
+        "tools": [
+          {
+            "name": "record_agreement",
+            "arguments": {
+              "agreed_price": 2200,
+              "above_max": false,
+              "carrier_contact_name": "Pat Lee",
+              "carrier_contact_phone": "5550144"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

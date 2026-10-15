@@ -1,0 +1,29 @@
+{
+  "id": "zone3_above_max_bid",
+  "title": "Store an above-ceiling bid instead of booking it",
+  "purpose": "A price above the ceiling is stored with above_max and contact info, and does not notify the quote API.",
+  "include": ["verified_load"],
+  "expectations": [
+    {"check": "no_leakage", "on_violation": "fail"},
+    {"check": "above_max_bid", "on_violation": "fail"}
+  ],
+  "turns": [
+    {
+      "user": "I need thirty-two hundred, final offer. Name is Pat Lee, phone 555-0144.",
+      "assistant": {
+        "text": "I'll note thirty-two hundred and have someone follow up with Pat.",
+        "tools": [
+          {
+            "name": "record_agreement",
+            "arguments": {
+              "agreed_price": 3200,
+              "above_max": true,
+              "carrier_contact_name": "Pat Lee",
+              "carrier_contact_phone": "5550144"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

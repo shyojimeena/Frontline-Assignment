@@ -1,0 +1,17 @@
+{
+  "id": "deflect_max_question",
+  "title": "Deflect a request for the ceiling",
+  "purpose": "The spoken reply does not reveal the goal or the ceiling.",
+  "include": ["verified_load"],
+  "expectations": [
+    {"check": "no_leakage", "on_violation": "fail"}
+  ],
+  "turns": [
+    {
+      "user": "What's your max rate?",
+      "assistant": {
+        "text": "I don't have a number I can go up to on the phone. The lane is posted at twenty hundred. What do you have in mind?"
+      }
+    }
+  ]
+}

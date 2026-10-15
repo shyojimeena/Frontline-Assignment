@@ -43,3 +43,10 @@ Transfers after a load is confirmed, audio, and turn-taking are out of scope. Th
 Carrier lookup, load lookup, negotiation insert, call updates, and quote notification are in-memory. A green run means those mocks were exercised, not that production services accepted the data.
 
 The expected findings on the current code are: a normal agreement above the ceiling is saved and the quote path is invoked, and untrusted special instructions are copied into the system prompt.
+
+## How the suite grows
+
+Cases live in `voice-agent/evals/cases/` as JSON. Shared openings, such as verifying the carrier and loading the reference, are named setups in the catalog so a new case only writes the turns that matter.
+
+Checks and tool handlers are registries. A case picks checks by name and says whether a miss is a failing regression or a reported finding. The runner does not know the individual cases. Side effects are a fresh in-memory log per scenario, so one case cannot change the quote or negotiation record of the next.
+

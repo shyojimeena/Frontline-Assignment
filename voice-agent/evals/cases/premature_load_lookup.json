@@ -1,0 +1,17 @@
+{
+  "id": "premature_load_lookup",
+  "title": "Reject a load id fabricated from speech",
+  "purpose": "get_load_context rejects a reference that is not a plausible id.",
+  "expectations": [
+    {"check": "tool_rejected", "on_violation": "fail", "tool": "get_load_context"}
+  ],
+  "turns": [
+    {
+      "user": "Yeah. Noted down.",
+      "assistant": {
+        "text": "Let me pull it up.",
+        "tools": [{"name": "get_load_context", "arguments": {"load_id": "Noted down"}}]
+      }
+    }
+  ]
+}

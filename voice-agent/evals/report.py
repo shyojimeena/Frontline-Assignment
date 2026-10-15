@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from evals.scorers import CheckResult
+from evals.models import CheckResult
 
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"

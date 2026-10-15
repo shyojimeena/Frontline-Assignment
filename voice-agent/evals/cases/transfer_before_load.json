@@ -1,0 +1,17 @@
+{
+  "id": "transfer_before_load",
+  "title": "Block a transfer before a load is confirmed",
+  "purpose": "transfer_to_human returns an error when no load is on the call.",
+  "expectations": [
+    {"check": "tool_rejected", "on_violation": "fail", "tool": "transfer_to_human"}
+  ],
+  "turns": [
+    {
+      "user": "Transfer me to a person.",
+      "assistant": {
+        "text": "One moment.",
+        "tools": [{"name": "transfer_to_human", "arguments": {"reason": "caller asked for a human"}}]
+      }
+    }
+  ]
+}
