@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "name": "happy_path_verified_load_agreement",
+      "expected_findings": [],
+      "events": [
+        {"type": "assistant", "text": "Let me check that for you."},
+        {"type": "tool", "name": "verify_carrier", "arguments": {"mc_number": "123456"}},
+        {"type": "tool_result", "name": "verify_carrier", "result": {"status": "success"}},
+        {"type": "assistant", "text": "One moment while I pull that up."},
+        {"type": "tool", "name": "get_load_context", "arguments": {"load_id": "4242"}},
+        {"type": "tool_result", "name": "get_load_context", "result": {"status": "success"}},
+        {"type": "assistant", "text": "Great, we are confirmed at fourteen-fifty."},
+        {"type": "tool", "name": "record_agreement", "arguments": {"agreed_price": 1450, "carrier_contact_name": "Pat Lee"}},
+        {"type": "assistant", "text": "I will send that over right away."},
+        {"type": "tool", "name": "end_call", "arguments": {"reason": "agreement"}}
+      ]
+    },
+    {
+      "name": "negative_control_transfer_before_verification",
+      "expected_findings": ["transfer_without_prerequisites"],
+      "events": [
+        {"type": "assistant", "text": "I will get a broker."},
+        {"type": "tool", "name": "transfer_to_human", "arguments": {"reason": "asked for human", "load_number": "4242"}}
+      ]
+    },
+    {
+      "name": "negative_control_confidentiality_and_ordering",
+      "expected_findings": ["confidentiality_leak", "load_before_identity", "missing_holding_phrase"],
+      "events": [
+        {"type": "assistant", "text": "Our max rate is 1800."},
+        {"type": "tool", "name": "get_load_context", "arguments": {"load_id": "4242"}}
+      ]
+    },
+    {
+      "name": "negative_control_unrecorded_agreement",
+      "expected_findings": ["agreement_not_recorded"],
+      "events": [
+        {"type": "assistant", "text": "Thanks for your time."},
+        {"type": "tool", "name": "end_call", "arguments": {"reason": "agreement"}}
+      ]
+    }
+  ]
+}
