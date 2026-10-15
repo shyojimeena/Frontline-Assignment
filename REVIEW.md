@@ -1,44 +1,23 @@
-# PR #1 review — do not merge
+# PR #1 review
 
-**Recommendation: do not merge.** The LiveKit/Telnyx migration keeps the single-prompt agent, and the warm-transfer design is careful. Inbound call start is not safe under LiveKit's at-least-once webhook delivery.
+**Do not merge.** Three paths in the pinned head [`f93f7a5`](https://github.com/e3-solutions/Frontline-Assignment/commit/f93f7a5f79efdf08c18c583a6a6f7167084b93ae) will mis-handle a real call. Reviewed against `5a98a66`. The PR branch was not modified. No credentials and no live calls.
 
-Reviewed pinned head [`f93f7a5f79efdf08c18c583a6a6f7167084b93ae`](https://github.com/e3-solutions/Frontline-Assignment/commit/f93f7a5f79efdf08c18c583a6a6f7167084b93ae) against base `5a98a66274322954a0a6255f54650eec6e50c41d`. Neither branch was modified. No production credentials were used and no live call was placed.
+## Duplicate webhooks start two agents
 
-## Findings
+[`voice-agent/server.py`](https://github.com/e3-solutions/Frontline-Assignment/blob/f93f7a5f79efdf08c18c583a6a6f7167084b93ae/voice-agent/server.py#L123-L141) checks `seen_livekit_events`, awaits `start_agent`, and only then adds the event id. LiveKit delivers webhooks at least once. A retry, or a second delivery that arrives while the first start is still running, passes the check and joins the same room.
 
-### 1. Duplicate webhooks can start two agents
+`test_verified_webhook_starts_bot_once` sends the duplicate after the first request has returned, so it does not cover this.
 
-Verified. In [`voice-agent/server.py`](https://github.com/e3-solutions/Frontline-Assignment/blob/f93f7a5f79efdf08c18c583a6a6f7167084b93ae/voice-agent/server.py#L123-L141) the event id is checked, then the bot is started, and only then is the id recorded:
+Record the id before the first await. Release it only when startup fails before the agent has joined. Add a test that fires the second webhook while the first `start_agent` is still awaiting.
 
-```python
-if event.event_id in app.state.seen_livekit_events:
-    return {"status": "duplicate", "event_id": event.event_id}
-# ...
-await start_agent(agent_request, request.app.state.http_session)
-app.state.seen_livekit_events.add(event.event_id)
-```
+## `from_phone` picks the organization the trunk does not dial as
 
-Nothing holds a lock across the check and the add. LiveKit retries when the handler is still inside `start_agent`, or when two deliveries overlap. Both requests pass the membership check and both join the caller's room.
+[`server.py`](https://github.com/e3-solutions/Frontline-Assignment/blob/f93f7a5f79efdf08c18c583a6a6f7167084b93ae/voice-agent/server.py#L158-L175) stores the request's `from_phone` as `bot_phone`. The bot uses that number for `get_org_name_for_phone` and `get_org_id_for_phone` (`bot.py`). The SIP request ignores it and always sends `livekit_outbound_number` as `sip_number` ([`livekit_telephony_service.py`](https://github.com/e3-solutions/Frontline-Assignment/blob/f93f7a5f79efdf08c18c583a6a6f7167084b93ae/voice-agent/livekit_telephony_service.py#L108-L117)).
 
-`test_verified_webhook_starts_bot_once` in `voice-agent/tests/test_server_livekit.py` posts the duplicate only after the first response returns, so it never hits this window.
+Anyone with the outbound API key can load one organization's context while the callee sees a different caller ID. Reject a `from_phone` that is not the configured outbound number, or pass that same allowlisted number as `sip_number` and use it for the org lookup.
 
-Claim the event id before starting the bot, under one lock, and add a test where the first start is still in progress when the second request arrives. If start fails before the agent joins, release the claim so a retry can recover. If the agent may already have joined, a retry must not start a second one.
+## `/outbound-call` waits for an answer and then returns 202
 
-### 2. The dedupe set grows for the life of the process
+The handler awaits `dial_phone` before the `202` ([`server.py`](https://github.com/e3-solutions/Frontline-Assignment/blob/f93f7a5f79efdf08c18c583a6a6f7167084b93ae/voice-agent/server.py#L162-L191)). `create_sip_participant` always sets `wait_until_answered=True`, so ringing, reject, and no-answer hold the request until the provider times out.
 
-Verified, secondary. `app.state.seen_livekit_events` is a process-local set with no expiry. Every accepted `participant_joined` stays there. That matches the PR's own limit that transfer state is process-local, and it will not dedupe across replicas. It is still a leak on the one process this server runs. Bound it, or store the claim somewhere that survives a restart if more than one replica will serve `/livekit-webhook`.
-
-## What held up
-
-- Webhook bodies are verified before parsing, and a trunk or dispatch-rule mismatch is rejected (`voice-agent/livekit_ingress.py`).
-- The broker briefing waits for `wait_until_answered` and a subscribed audio track before the Room2 prompt runs (`voice-agent/room2_pipeline_service.py`).
-- A move that cannot be reconciled raises `ParticipantMoveOutcomeUnknown` and is not retried (`voice-agent/livekit_telephony_service.py`, `move_participant_verified`).
-- Slack failures are swallowed and do not abort the dial (`orchestrator._notify_best_effort`).
-- Historical Daily call ids still display: `providerCallId` falls back to `daily_call_id`.
-
-## Assumptions and open questions
-
-- Assumed one Uvicorn process. The race exists even then. More than one replica makes the in-memory set insufficient.
-- Did not run the PR's 127 voice tests. The local checkout used for inspection was still on the Daily dependency set, and the review did not switch onto the PR branch. Token grants were checked against current `livekit-api` `VideoGrants`: `room_join=True` still defaults `can_publish` and `can_subscribe` to true, so the bot token is not missing publish permission.
-- Could not confirm whether LiveKit keeps the same participant SID after `move_participant`. Disconnect handling compares that SID (`bot.py` and `on_handoff_ended`). If the SID changes in Room1, the broker hanging up will not match `human_participant_id`, and Room1 will not be torn down until the carrier leaves. That is an unresolved behavior risk, not a defect proved from this tree.
-- `calls.telephony_provider` is written on every new call. The voice service has to deploy after `web/supabase/migrations/20260907000000_add_livekit_call_attribution.sql`. That migration was not applied.
+Keep that wait for the broker leg. For this endpoint, dial without waiting, or stop calling the response accepted and bound the wait. Add a test where the callee has not answered and the handler has already returned.
